@@ -1,0 +1,16 @@
+{
+  "name": "mqtt-qos-aula",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "pub:temp": "node pubTemp.js",
+    "sub:temp": "node subTemp.js",
+    "pub:agua": "node pubAgua.js",
+    "sub:agua": "node subAgua.js",
+    "pub:fogo": "node pubFogo.js",
+    "sub:fogo": "node subFogo.js"
+  },
+  "dependencies": {
+    "mqtt": "^5.0.0"
+  }
+}
