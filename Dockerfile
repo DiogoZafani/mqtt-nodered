@@ -7,4 +7,4 @@ RUN npm ci --omit=dev
 
 COPY . .
 
-CMD ["npm", "run", "sub:qos0"]
+CMD ["npm", "run", "publisher"]

@@ -1,0 +1,359 @@
+[
+  {
+    "id": "flow.basic",
+    "type": "tab",
+    "label": "MQTT Basico",
+    "disabled": false,
+    "info": "Fluxo simples: recebe temperatura/umidade por MQTT, mostra no dashboard e liga o LED por 3 segundos quando temperatura >= 27 C ou umidade >= 70%."
+  },
+  {
+    "id": "mqtt.broker",
+    "type": "mqtt-broker",
+    "name": "Mosquitto",
+    "broker": "broker",
+    "port": "1883",
+    "clientid": "node-red-dashboard",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": 4,
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthRetain": "false",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closeRetain": "false",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willRetain": "false",
+    "willPayload": "",
+    "willMsg": {},
+    "userProps": "",
+    "sessionExpiry": 0
+  },
+  {
+    "id": "ui.base",
+    "type": "ui-base",
+    "name": "Dashboard MQTT",
+    "path": "/dashboard",
+    "appIcon": "",
+    "includeClientData": true,
+    "acceptsClientConfig": [
+      "ui-notification",
+      "ui-control"
+    ],
+    "showPathInSidebar": false,
+    "headerContent": "page",
+    "navigationStyle": "default",
+    "titleBarStyle": "default",
+    "showReconnectNotification": true,
+    "notificationDisplayTime": 1,
+    "showDisconnectNotification": true,
+    "allowInstall": false
+  },
+  {
+    "id": "ui.theme",
+    "type": "ui-theme",
+    "name": "Tema",
+    "colors": {
+      "surface": "#ffffff",
+      "primary": "#0f766e",
+      "bgPage": "#f3f4f6",
+      "groupBg": "#ffffff",
+      "groupOutline": "#d1d5db"
+    },
+    "sizes": {
+      "density": "default",
+      "pagePadding": "12px",
+      "groupGap": "12px",
+      "groupBorderRadius": "4px",
+      "widgetGap": "12px"
+    }
+  },
+  {
+    "id": "ui.page",
+    "type": "ui-page",
+    "name": "Monitor MQTT",
+    "ui": "ui.base",
+    "path": "/mqtt",
+    "icon": "dashboard",
+    "layout": "grid",
+    "theme": "ui.theme",
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": 0,
+        "cols": 3
+      },
+      {
+        "name": "Tablet",
+        "px": 576,
+        "cols": 6
+      },
+      {
+        "name": "Desktop",
+        "px": 1024,
+        "cols": 12
+      }
+    ],
+    "order": 1,
+    "className": "",
+    "visible": "true",
+    "disabled": "false"
+  },
+  {
+    "id": "ui.group.data",
+    "type": "ui-group",
+    "name": "Leitura",
+    "page": "ui.page",
+    "width": 6,
+    "height": 1,
+    "order": 1,
+    "showTitle": true,
+    "className": "",
+    "visible": true,
+    "disabled": false,
+    "groupType": "default"
+  },
+  {
+    "id": "ui.group.control",
+    "type": "ui-group",
+    "name": "LED",
+    "page": "ui.page",
+    "width": 6,
+    "height": 1,
+    "order": 2,
+    "showTitle": true,
+    "className": "",
+    "visible": true,
+    "disabled": false,
+    "groupType": "default"
+  },
+  {
+    "id": "mqtt.in.telemetry",
+    "type": "mqtt in",
+    "z": "flow.basic",
+    "name": "Receber dados",
+    "topic": "iot/laboratorio/esp32-01/telemetry",
+    "qos": "1",
+    "datatype": "auto-detect",
+    "broker": "mqtt.broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 140,
+    "y": 120,
+    "wires": [
+      [
+        "fn.process"
+      ]
+    ]
+  },
+  {
+    "id": "fn.process",
+    "type": "function",
+    "z": "flow.basic",
+    "name": "Verificar limites",
+    "func": "let data = msg.payload;\n\nif (Buffer.isBuffer(data)) {\n    data = data.toString();\n}\n\nif (typeof data === 'string') {\n    data = JSON.parse(data);\n}\n\nconst tempAlta = data.temperature >= 27;\nconst umidadeAlta = data.humidity >= 70;\nconst avisos = [];\n\nif (tempAlta) {\n    avisos.push('Temperatura alta');\n}\n\nif (umidadeAlta) {\n    avisos.push('Umidade alta');\n}\n\nconst saidas = [\n    { payload: `${data.temperature} C` },\n    { payload: `${data.humidity}%` },\n    { payload: data.led },\n    null,\n    null\n];\n\nif (avisos.length > 0 && !context.get('ledTemporarioAtivo')) {\n    context.set('ledTemporarioAtivo', true);\n\n    saidas[2] = { payload: true };\n    saidas[3] = { payload: avisos.join(' e ') };\n    saidas[4] = {\n        topic: 'iot/laboratorio/esp32-01/cmd',\n        payload: JSON.stringify({ led: true }),\n        qos: 1,\n        retain: false\n    };\n\n    setTimeout(() => {\n        context.set('ledTemporarioAtivo', false);\n        node.send([\n            null,\n            null,\n            { payload: false },\n            { payload: '' },\n            {\n                topic: 'iot/laboratorio/esp32-01/cmd',\n                payload: JSON.stringify({ led: false }),\n                qos: 1,\n                retain: false\n            }\n        ]);\n    }, 3000);\n}\n\nreturn saidas;",
+    "outputs": 5,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 360,
+    "y": 120,
+    "wires": [
+      [
+        "ui.text.temperature"
+      ],
+      [
+        "ui.text.humidity"
+      ],
+      [
+        "ui.template.led"
+      ],
+      [
+        "ui.text.alert"
+      ],
+      [
+        "mqtt.out.command"
+      ]
+    ]
+  },
+  {
+    "id": "ui.text.temperature",
+    "type": "ui-text",
+    "z": "flow.basic",
+    "group": "ui.group.data",
+    "order": 1,
+    "width": 6,
+    "height": 1,
+    "name": "Temperatura",
+    "label": "Temperatura",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "style": false,
+    "font": "Helvetica",
+    "fontSize": 16,
+    "color": "#111827",
+    "wrapText": false,
+    "className": "",
+    "value": "payload",
+    "valueType": "msg",
+    "x": 610,
+    "y": 70,
+    "wires": []
+  },
+  {
+    "id": "ui.text.humidity",
+    "type": "ui-text",
+    "z": "flow.basic",
+    "group": "ui.group.data",
+    "order": 2,
+    "width": 6,
+    "height": 1,
+    "name": "Umidade",
+    "label": "Umidade",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "style": false,
+    "font": "Helvetica",
+    "fontSize": 16,
+    "color": "#111827",
+    "wrapText": false,
+    "className": "",
+    "value": "payload",
+    "valueType": "msg",
+    "x": 600,
+    "y": 110,
+    "wires": []
+  },
+  {
+    "id": "ui.text.alert",
+    "type": "ui-text",
+    "z": "flow.basic",
+    "group": "ui.group.data",
+    "order": 3,
+    "width": 6,
+    "height": 1,
+    "name": "Aviso",
+    "label": "Aviso",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "style": false,
+    "font": "Helvetica",
+    "fontSize": 16,
+    "color": "#b91c1c",
+    "wrapText": true,
+    "className": "",
+    "value": "payload",
+    "valueType": "msg",
+    "x": 590,
+    "y": 150,
+    "wires": []
+  },
+  {
+    "id": "ui.template.led",
+    "type": "ui-template",
+    "z": "flow.basic",
+    "group": "ui.group.control",
+    "page": "",
+    "ui": "",
+    "name": "LED visual",
+    "order": 1,
+    "width": 6,
+    "height": 2,
+    "head": "",
+    "format": "<template>\n  <div class=\"led-box\">\n    <span class=\"led-dot\" :class=\"{ on: msg && msg.payload === true }\"></span>\n    <span>{{ msg && msg.payload === true ? 'LED ligado' : 'LED desligado' }}</span>\n  </div>\n</template>\n\n<style>\n.led-box {\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  min-height: 48px;\n  font-size: 18px;\n}\n.led-dot {\n  width: 28px;\n  height: 28px;\n  border-radius: 50%;\n  background: #9ca3af;\n  border: 2px solid #6b7280;\n}\n.led-dot.on {\n  background: #22c55e;\n  border-color: #15803d;\n  box-shadow: 0 0 14px #22c55e;\n}\n</style>",
+    "storeOutMessages": true,
+    "passthru": true,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 610,
+    "y": 220,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ui.switch.led",
+    "type": "ui-switch",
+    "z": "flow.basic",
+    "name": "Ligar manual",
+    "label": "Ligar manual",
+    "group": "ui.group.control",
+    "order": 2,
+    "width": 6,
+    "height": 1,
+    "passthru": false,
+    "decouple": false,
+    "topic": "topic",
+    "topicType": "msg",
+    "style": "",
+    "className": "",
+    "layout": "row-spread",
+    "clickableArea": "switch",
+    "onvalue": true,
+    "onvalueType": "bool",
+    "onicon": "",
+    "oncolor": "",
+    "offvalue": false,
+    "offvalueType": "bool",
+    "officon": "",
+    "offcolor": "",
+    "x": 140,
+    "y": 310,
+    "wires": [
+      [
+        "fn.manual.command"
+      ]
+    ]
+  },
+  {
+    "id": "fn.manual.command",
+    "type": "function",
+    "z": "flow.basic",
+    "name": "Comando manual",
+    "func": "msg.topic = 'iot/laboratorio/esp32-01/cmd';\nmsg.payload = JSON.stringify({ led: msg.payload === true });\nmsg.qos = 1;\nmsg.retain = false;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 370,
+    "y": 310,
+    "wires": [
+      [
+        "mqtt.out.command"
+      ]
+    ]
+  },
+  {
+    "id": "mqtt.out.command",
+    "type": "mqtt out",
+    "z": "flow.basic",
+    "name": "Enviar comando",
+    "topic": "",
+    "qos": "",
+    "retain": "",
+    "respTopic": "",
+    "contentType": "application/json",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt.broker",
+    "x": 610,
+    "y": 310,
+    "wires": []
+  }
+]

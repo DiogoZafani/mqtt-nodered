@@ -1,14 +1,13 @@
 {
-  "name": "mqtt-qos-aula",
+  "name": "mqtt-nodered-flowfuse-iot",
   "version": "1.0.0",
+  "description": "Desafio de integracao MQTT com Node-RED e Dashboard FlowFuse",
   "type": "module",
   "scripts": {
-    "pub:temp": "node pubTemp.js",
-    "sub:temp": "node subTemp.js",
-    "pub:agua": "node pubAgua.js",
-    "sub:agua": "node subAgua.js",
-    "pub:fogo": "node pubFogo.js",
-    "sub:fogo": "node subFogo.js"
+    "publisher": "node publisher.js",
+    "command": "node sendCommand.js",
+    "stack": "docker compose --profile demo up --build",
+    "stack:base": "docker compose up --build broker node-red"
   },
   "dependencies": {
     "mqtt": "^5.0.0"

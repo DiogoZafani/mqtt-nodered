@@ -1,22 +1,33 @@
 services:
   broker:
     image: eclipse-mosquitto:2
-    container_name: mqtt-broker
     ports:
-      - "1883:1883"
+      - "${MQTT_PORT:-1883}:1883"
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
 
-  app:
+  node-red:
+    build:
+      context: .
+      dockerfile: node-red.Dockerfile
+    ports:
+      - "${NODE_RED_PORT:-1880}:1880"
+    environment:
+      TZ: America/Sao_Paulo
+      FLOWS: flows.json
+    depends_on:
+      - broker
+
+  publisher:
     build: .
     environment:
       MQTT_URL: mqtt://broker:1883
     depends_on:
       - broker
     profiles:
-      - app
+      - demo
 
 volumes:
   mosquitto_data:
