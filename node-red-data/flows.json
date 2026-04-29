@@ -161,8 +161,8 @@
     "type": "function",
     "z": "flow.basic",
     "name": "Verificar limites",
-    "func": "let data = msg.payload;\n\nif (Buffer.isBuffer(data)) {\n    data = data.toString();\n}\n\nif (typeof data === 'string') {\n    data = JSON.parse(data);\n}\n\nconst tempAlta = data.temperature >= 27;\nconst umidadeAlta = data.humidity >= 70;\nconst avisos = [];\n\nif (tempAlta) {\n    avisos.push('Temperatura alta');\n}\n\nif (umidadeAlta) {\n    avisos.push('Umidade alta');\n}\n\nconst saidas = [\n    { payload: `${data.temperature} C` },\n    { payload: `${data.humidity}%` },\n    { payload: data.led },\n    null,\n    null\n];\n\nif (avisos.length > 0 && !context.get('ledTemporarioAtivo')) {\n    context.set('ledTemporarioAtivo', true);\n\n    saidas[2] = { payload: true };\n    saidas[3] = { payload: avisos.join(' e ') };\n    saidas[4] = {\n        topic: 'iot/laboratorio/esp32-01/cmd',\n        payload: JSON.stringify({ led: true }),\n        qos: 1,\n        retain: false\n    };\n\n    setTimeout(() => {\n        context.set('ledTemporarioAtivo', false);\n        node.send([\n            null,\n            null,\n            { payload: false },\n            { payload: '' },\n            {\n                topic: 'iot/laboratorio/esp32-01/cmd',\n                payload: JSON.stringify({ led: false }),\n                qos: 1,\n                retain: false\n            }\n        ]);\n    }, 3000);\n}\n\nreturn saidas;",
-    "outputs": 5,
+    "func": "let data = msg.payload;\n\nif (Buffer.isBuffer(data)) {\n    data = data.toString();\n}\n\nif (typeof data === 'string') {\n    data = JSON.parse(data);\n}\n\nconst tempAlta = data.temperature >= 27;\nconst umidadeAlta = data.humidity >= 70;\nconst avisos = [];\n\nif (tempAlta) {\n    avisos.push('Temperatura alta');\n}\n\nif (umidadeAlta) {\n    avisos.push('Umidade alta');\n}\n\nconst saidas = [\n    { payload: data.temperature },\n    { payload: data.humidity },\n    { payload: data.led },\n    null,\n    null,\n    { topic: 'Temperatura', payload: data.temperature },\n    { topic: 'Umidade', payload: data.humidity }\n];\n\nif (avisos.length > 0 && !context.get('ledTemporarioAtivo')) {\n    context.set('ledTemporarioAtivo', true);\n\n    saidas[2] = { payload: true };\n    saidas[3] = { payload: avisos.join(' e ') };\n    saidas[4] = {\n        topic: 'iot/laboratorio/esp32-01/cmd',\n        payload: JSON.stringify({ led: true }),\n        qos: 1,\n        retain: false\n    };\n\n    setTimeout(() => {\n        context.set('ledTemporarioAtivo', false);\n        node.send([\n            null,\n            null,\n            { payload: false },\n            { payload: '' },\n            {\n                topic: 'iot/laboratorio/esp32-01/cmd',\n                payload: JSON.stringify({ led: false }),\n                qos: 1,\n                retain: false\n            },\n            null,\n            null\n        ]);\n    }, 3000);\n}\n\nreturn saidas;",
+    "outputs": 7,
     "timeout": 0,
     "noerr": 0,
     "initialize": "",
@@ -172,93 +172,202 @@
     "y": 120,
     "wires": [
       [
-        "ui.text.temperature"
+        "ui.gauge.temperature"
       ],
       [
-        "ui.text.humidity"
+        "ui.gauge.humidity"
       ],
       [
         "ui.template.led"
       ],
       [
-        "ui.text.alert"
+        "ui.template.alert"
       ],
       [
         "mqtt.out.command"
+      ],
+      [
+        "ui.chart.sensors"
+      ],
+      [
+        "ui.chart.sensors"
       ]
     ]
   },
   {
-    "id": "ui.text.temperature",
-    "type": "ui-text",
+    "id": "ui.gauge.temperature",
+    "type": "ui-gauge",
+    "z": "flow.basic",
+    "name": "Gauge temperatura",
+    "group": "ui.group.data",
+    "order": 2,
+    "value": "payload",
+    "valueType": "msg",
+    "width": 3,
+    "height": 3,
+    "gtype": "gauge-half",
+    "gstyle": "needle",
+    "title": "Temperatura",
+    "alwaysShowTitle": false,
+    "floatingTitlePosition": "top-left",
+    "units": "C",
+    "icon": "",
+    "prefix": "",
+    "suffix": "",
+    "segments": [
+      {
+        "from": "0",
+        "color": "#2ca02c"
+      },
+      {
+        "from": "27",
+        "color": "#ffbf00"
+      },
+      {
+        "from": "32",
+        "color": "#d62728"
+      }
+    ],
+    "min": 0,
+    "max": 40,
+    "sizeThickness": 16,
+    "sizeGap": 4,
+    "sizeKeyThickness": 8,
+    "styleRounded": true,
+    "styleGlow": false,
+    "className": "",
+    "x": 610,
+    "y": 70,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ui.gauge.humidity",
+    "type": "ui-gauge",
+    "z": "flow.basic",
+    "name": "Gauge umidade",
+    "group": "ui.group.data",
+    "order": 3,
+    "value": "payload",
+    "valueType": "msg",
+    "width": 3,
+    "height": 3,
+    "gtype": "gauge-half",
+    "gstyle": "needle",
+    "title": "Umidade",
+    "alwaysShowTitle": false,
+    "floatingTitlePosition": "top-left",
+    "units": "%",
+    "icon": "",
+    "prefix": "",
+    "suffix": "",
+    "segments": [
+      {
+        "from": "0",
+        "color": "#2ca02c"
+      },
+      {
+        "from": "70",
+        "color": "#ffbf00"
+      },
+      {
+        "from": "85",
+        "color": "#d62728"
+      }
+    ],
+    "min": 0,
+    "max": 100,
+    "sizeThickness": 16,
+    "sizeGap": 4,
+    "sizeKeyThickness": 8,
+    "styleRounded": true,
+    "styleGlow": false,
+    "className": "",
+    "x": 600,
+    "y": 110,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ui.template.alert",
+    "type": "ui-template",
     "z": "flow.basic",
     "group": "ui.group.data",
+    "page": "",
+    "ui": "",
+    "name": "Aviso",
     "order": 1,
     "width": 6,
     "height": 1,
-    "name": "Temperatura",
-    "label": "Temperatura",
-    "format": "{{msg.payload}}",
-    "layout": "row-spread",
-    "style": false,
-    "font": "Helvetica",
-    "fontSize": 16,
-    "color": "#111827",
-    "wrapText": false,
+    "head": "",
+    "format": "<template>\n  <div class=\"alert-banner\" :class=\"{ active: msg && msg.payload }\">\n    <span v-if=\"msg && msg.payload\">{{ msg.payload }}</span>\n  </div>\n</template>\n\n<style>\n.alert-banner {\n  min-height: 42px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  border-radius: 4px;\n  font-weight: 700;\n  font-size: 16px;\n}\n.alert-banner.active {\n  background: #dc2626;\n  color: #ffffff;\n}\n</style>",
+    "storeOutMessages": true,
+    "passthru": true,
+    "resendOnRefresh": true,
+    "templateScope": "local",
     "className": "",
-    "value": "payload",
-    "valueType": "msg",
-    "x": 610,
-    "y": 70,
-    "wires": []
-  },
-  {
-    "id": "ui.text.humidity",
-    "type": "ui-text",
-    "z": "flow.basic",
-    "group": "ui.group.data",
-    "order": 2,
-    "width": 6,
-    "height": 1,
-    "name": "Umidade",
-    "label": "Umidade",
-    "format": "{{msg.payload}}",
-    "layout": "row-spread",
-    "style": false,
-    "font": "Helvetica",
-    "fontSize": 16,
-    "color": "#111827",
-    "wrapText": false,
-    "className": "",
-    "value": "payload",
-    "valueType": "msg",
-    "x": 600,
-    "y": 110,
-    "wires": []
-  },
-  {
-    "id": "ui.text.alert",
-    "type": "ui-text",
-    "z": "flow.basic",
-    "group": "ui.group.data",
-    "order": 3,
-    "width": 6,
-    "height": 1,
-    "name": "Aviso",
-    "label": "Aviso",
-    "format": "{{msg.payload}}",
-    "layout": "row-spread",
-    "style": false,
-    "font": "Helvetica",
-    "fontSize": 16,
-    "color": "#b91c1c",
-    "wrapText": true,
-    "className": "",
-    "value": "payload",
-    "valueType": "msg",
     "x": 590,
     "y": 150,
-    "wires": []
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "ui.chart.sensors",
+    "type": "ui-chart",
+    "z": "flow.basic",
+    "group": "ui.group.data",
+    "name": "Grafico",
+    "label": "Temperatura e Umidade",
+    "order": 4,
+    "chartType": "line",
+    "category": "topic",
+    "categoryType": "msg",
+    "xAxisLabel": "",
+    "xAxisProperty": "",
+    "xAxisPropertyType": "timestamp",
+    "xAxisType": "time",
+    "xAxisFormat": "",
+    "xAxisFormatType": "auto",
+    "xmin": "",
+    "xmax": "",
+    "yAxisLabel": "",
+    "yAxisProperty": "payload",
+    "yAxisPropertyType": "msg",
+    "ymin": "0",
+    "ymax": "100",
+    "bins": 10,
+    "action": "append",
+    "stackSeries": false,
+    "pointShape": "circle",
+    "pointRadius": 3,
+    "showLegend": true,
+    "removeOlder": 10,
+    "removeOlderUnit": "60",
+    "removeOlderPoints": "",
+    "colors": [
+      "#dc2626",
+      "#2563eb"
+    ],
+    "textColor": [
+      "#111827"
+    ],
+    "textColorDefault": false,
+    "gridColor": [
+      "#d1d5db"
+    ],
+    "gridColorDefault": false,
+    "width": 6,
+    "height": 4,
+    "className": "",
+    "interpolation": "linear",
+    "x": 610,
+    "y": 200,
+    "wires": [
+      []
+    ]
   },
   {
     "id": "ui.template.led",
@@ -270,9 +379,9 @@
     "name": "LED visual",
     "order": 1,
     "width": 6,
-    "height": 2,
+    "height": 4,
     "head": "",
-    "format": "<template>\n  <div class=\"led-box\">\n    <span class=\"led-dot\" :class=\"{ on: msg && msg.payload === true }\"></span>\n    <span>{{ msg && msg.payload === true ? 'LED ligado' : 'LED desligado' }}</span>\n  </div>\n</template>\n\n<style>\n.led-box {\n  display: flex;\n  align-items: center;\n  gap: 12px;\n  min-height: 48px;\n  font-size: 18px;\n}\n.led-dot {\n  width: 28px;\n  height: 28px;\n  border-radius: 50%;\n  background: #9ca3af;\n  border: 2px solid #6b7280;\n}\n.led-dot.on {\n  background: #22c55e;\n  border-color: #15803d;\n  box-shadow: 0 0 14px #22c55e;\n}\n</style>",
+    "format": "<template>\n  <div class=\"lamp\" :class=\"{ on: msg && msg.payload === true }\">\n    <div class=\"rays\">\n      <span></span><span></span><span></span>\n    </div>\n    <div class=\"bulb\"></div>\n    <div class=\"neck\"></div>\n    <div class=\"base\"></div>\n  </div>\n</template>\n\n<style>\n.lamp {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  min-height: 130px;\n}\n.rays {\n  display: flex;\n  gap: 8px;\n  height: 18px;\n  align-items: end;\n  opacity: 0;\n}\n.rays span {\n  width: 5px;\n  height: 14px;\n  border-radius: 999px;\n  background: #facc15;\n}\n.rays span:first-child { transform: rotate(-28deg); }\n.rays span:last-child { transform: rotate(28deg); }\n.bulb {\n  width: 64px;\n  height: 64px;\n  border-radius: 50% 50% 42% 42%;\n  background: #9ca3af;\n  border: 3px solid #6b7280;\n}\n.neck {\n  width: 30px;\n  height: 14px;\n  background: #6b7280;\n  border-radius: 0 0 6px 6px;\n}\n.base {\n  width: 54px;\n  height: 12px;\n  background: #374151;\n  border-radius: 999px;\n}\n.lamp.on .rays { opacity: 1; }\n.lamp.on .bulb {\n  background: #fde047;\n  border-color: #ca8a04;\n  box-shadow: 0 0 26px #facc15;\n}\n</style>",
     "storeOutMessages": true,
     "passthru": true,
     "resendOnRefresh": true,
@@ -282,60 +391,6 @@
     "y": 220,
     "wires": [
       []
-    ]
-  },
-  {
-    "id": "ui.switch.led",
-    "type": "ui-switch",
-    "z": "flow.basic",
-    "name": "Ligar manual",
-    "label": "Ligar manual",
-    "group": "ui.group.control",
-    "order": 2,
-    "width": 6,
-    "height": 1,
-    "passthru": false,
-    "decouple": false,
-    "topic": "topic",
-    "topicType": "msg",
-    "style": "",
-    "className": "",
-    "layout": "row-spread",
-    "clickableArea": "switch",
-    "onvalue": true,
-    "onvalueType": "bool",
-    "onicon": "",
-    "oncolor": "",
-    "offvalue": false,
-    "offvalueType": "bool",
-    "officon": "",
-    "offcolor": "",
-    "x": 140,
-    "y": 310,
-    "wires": [
-      [
-        "fn.manual.command"
-      ]
-    ]
-  },
-  {
-    "id": "fn.manual.command",
-    "type": "function",
-    "z": "flow.basic",
-    "name": "Comando manual",
-    "func": "msg.topic = 'iot/laboratorio/esp32-01/cmd';\nmsg.payload = JSON.stringify({ led: msg.payload === true });\nmsg.qos = 1;\nmsg.retain = false;\nreturn msg;",
-    "outputs": 1,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 370,
-    "y": 310,
-    "wires": [
-      [
-        "mqtt.out.command"
-      ]
     ]
   },
   {
